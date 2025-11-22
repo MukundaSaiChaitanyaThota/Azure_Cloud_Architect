@@ -2,56 +2,52 @@
 
 ## 🎯 Objectives
 
-- Design and validate multi-region topologies, replication strategies, and global traffic management.
-- Balance trade-offs for RTO/RPO, consistency, and cost in multi-region deployments.
+- Design global routing, replication and failover strategies for multi-region deployments while maintaining private connectivity and security.
+- Evaluate active-active vs active-passive patterns and their operational cost.
 
 ## 📚 Learning Topics
 
-- Global load balancing: Front Door, Traffic Manager.
-- Cross-region replication: CosmosDB multi-region, geo-redundant storage and failover procedures.
-- Inter-region connectivity, VNet peering, and gateway transit.
-- Cost and operational implications of active-active vs active-passive topologies.
+- Private DNS resolver and cross-region name resolution patterns.
+- Azure Firewall hub patterns and centralized inspection.
+- Global routing: Azure Front Door, Traffic Manager, and prerequisites for health probes.
+- Active-active vs active-passive architectures and their consistency implications.
+- CosmosDB multi-region configurations and consistency models.
 
 ## 🛠 Hands-on Tasks (copyable steps)
 
-1. Plan paired-region deployment
+1. Design private DNS solution
 
-- Pick primary and secondary regions and document network and resource mapping.
+- Implement Private DNS zones and conditional forwarding using Azure DNS Private Resolver for cross-region name resolution.
 
-2. Configure Front Door with regional backends
+2. Configure Azure Firewall hub
 
-```bash
-# example: create Front Door and add backend pools for each region with health probes
-```
+- Deploy Firewall in hub, centralize logging, and configure route tables for spoke egress through the firewall.
 
-3. Configure CosmosDB multi-region replication
+3. Set up Front Door with regional backends
 
-```bash
-az cosmosdb create --name mycosmos --resource-group rg -- locations regionName=EastUS failoverPriority=0
-az cosmosdb failover-priority-change --resource-group rg --name mycosmos --failover-policies "[{'regionName':'WestUS','failoverPriority':1}]"
-```
+- Configure Front Door backend pools pointing to regional Application Gateway endpoints and validate health probe routing.
 
-4. Test failover scenarios
+4. CosmosDB replication test
 
-- Simulate regional outage by disabling Backends/health probes and validate Front Door failover.
-- Run read/write tests to validate replication and consistency behavior.
+- Configure CosmosDB with multiple regions and experiment with read replicas and failover priority changes.
 
-5. Document DR and failback runbooks
+5. DR testing
 
-- Create step-by-step runbooks for failover activation, DNS updates, and data validation.
+- Simulate regional outage and execute failover runbooks, measure RTO and RPO, and validate data integrity.
 
 ## 🏗 Deliverables
 
-- Multi-region topology diagram `cloud-architect-roadmap/diagrams/multi-region-topology.png`.
-- Terraform examples for region bootstrap and replication for CosmosDB and infrastructure.
-- Failover and failback runbooks and test results.
+- Private DNS architecture and resolver configuration examples.
+- Firewall hub Terraform examples and route table configs.
+- Front Door config and failover test report.
+- CosmosDB multi-region setup with replication and test scripts.
 
 ## 🔍 Architecture Diagrams (placeholder)
 
-- `cloud-architect-roadmap/diagrams/multi-region-topology.png` — Front Door -> Regional AKS/Functions clusters -> CosmosDB multi-region.
+- `cloud-architect-roadmap/diagrams/multi-region-topology.png` — Front Door -> Regional AKS/Functions clusters -> CosmosDB multi-region with firewall hub.
 
 ## 📓 Notes & Reflection (TMS perspective)
 
-Multi-region architecture introduces cost and complexity. Week 07 is about measuring what you need: high availability vs low latency, and choosing replication models that meet business needs. Practice failover with drills — runbooks that are never tested are unreliable.
+Multi-region design is trade-off heavy. Week 07 forced me to think about consistency models and how much complexity we are willing to bear for availability. In many cases, active-passive is simpler and cheaper while active-active is justified only for high-traffic, low-latency needs.
 
 — TMS

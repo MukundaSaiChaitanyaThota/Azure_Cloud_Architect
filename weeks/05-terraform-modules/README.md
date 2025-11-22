@@ -1,32 +1,36 @@
-# Week 05: Terraform Modules
+# Week 05: Terraform Modules — Design & Pipelines
 
 ## 🎯 Objectives
 
-- Design and implement reusable Terraform modules for the platform: networking, identity, AKS, monitoring.
-- Establish CI checks, testing, and versioning practices for modules.
+- Design a modular Terraform layout for the platform and implement pipelines to validate and test modules.
+- Decide on state management, locking, and promotion strategies for module versions.
 
 ## 📚 Learning Topics
 
-- Module boundaries, inputs/outputs, naming and versioning strategies.
-- Remote state backends, state locking, and workspace strategies.
-- Testing modules with Terratest and unit testing approaches.
-- Publishing modules (private registry vs repository-based consumption).
+- Module structure: root modules vs reusable modules, inputs/outputs, and semantic versioning.
+- Remote state: Azure Storage backend, state locking, and workspace isolation.
+- Pipelines: GitHub Actions for `fmt`, `validate`, `plan` and policy checks (tflint, checkov).
+- Terragrunt vs native Terraform: trade-offs for DRY, environment overlays, and locking.
+- Building reusable modules (VNet, AKS, Application Gateway) with proper documentation and examples.
 
 ## 🛠 Hands-on Tasks (copyable steps)
 
-1. Create a module scaffold
+1. Create module folder structure
 
-```bash
-mkdir -p infrastructure/modules/networking
-cd infrastructure/modules/networking
-# add main.tf, variables.tf, outputs.tf and README.md
+```
+infrastructure/modules/
+  networking/
+  aks/
+  monitoring/
+  identity/
+
+infrastructure/environments/
+  dev/
+  staging/
+  prod/
 ```
 
-2. Define inputs/outputs and validation
-
-- Use type constraints and default values for variables and document them.
-
-3. Configure remote backend example
+2. Remote backend example (azurerm)
 
 ```hcl
 terraform {
@@ -34,32 +38,39 @@ terraform {
     resource_group_name  = "rg-terraform-backend"
     storage_account_name = "<storage_account>"
     container_name       = "tfstate"
-    key                  = "networking.tfstate"
+    key                  = "env-prod.tfstate"
   }
 }
 ```
 
-4. Add CI checks (GitHub Actions)
+3. CI pipeline example (GitHub Actions)
 
-- Create a workflow to run `terraform fmt`, `terraform validate`, and tflint on PRs.
+- Workflow steps:
+  - Run `terraform fmt -check`.
+  - Run `terraform init` and `terraform validate`.
+  - Run `tflint` and `checkov` security scans.
+  - Run `terraform plan` and upload plan as an artifact for review.
 
-5. Add Terratest examples
+4. Terragrunt vs Terraform
 
-- Write simple Go-based tests that validate the module's provisioning in a test subscription and clean up resources after test.
+- Terragrunt simplifies environment overlays and DRY patterns but introduces an additional toolchain; native Terraform with well-designed modules and `terraform workspaces` can suffice for many teams.
+
+5. Testing modules
+
+- Implement Terratest (Go) or Kitchen-Terraform tests to validate module behavior in an ephemeral test subscription.
 
 ## 🏗 Deliverables
 
-- Terraform module scaffold for networking and AKS in `infrastructure/modules/`.
-- CI workflow for formatting and validation.
-- Example Terratest or unit test for the networking module.
-- Documentation and example usage for each module.
+- Reusable modules for `networking`, `aks`, `appgateway` with clear variable docs and examples.
+- CI workflows for module validation, plan generation and security checks.
+- Example Terratest suites and instructions to run tests locally or in CI.
 
 ## 🔍 Architecture Diagrams (placeholder)
 
-- `cloud-architect-roadmap/diagrams/terraform-module-structure.png` — module layout and environment overlays
+- `cloud-architect-roadmap/diagrams/terraform-module-structure.png` — module layout and environment overlays.
 
 ## 📓 Notes & Reflection (TMS perspective)
 
-Modules are the unit of reuse. Week 05 is about making infrastructure consumable and testable. Investment in validation and testing reduces surprises when modules are reused across environments and teams.
+I prefer small, focused modules that do one thing well. Terragrunt is useful when you have many environments and repetitive wiring, but it adds complexity. Invest in CI early — automated plan checks and linting prevent many mistakes.
 
 — TMS

@@ -2,45 +2,45 @@
 
 ## 🎯 Objectives
 
-- Produce concise case studies and artifacts that demonstrate architectural decisions, implementation, and outcomes.
-- Prepare material for interviews and stakeholder presentations.
+- Produce polished case studies and artifacts that showcase architecture decisions, implementations, and measurable outcomes.
+- Prepare materials suitable for recruiters and interviewers (concise, evidence-based).
 
 ## 📚 Learning Topics
 
-- Writing effective case studies: problem, constraints, solution, results, and trade-offs.
-- Diagramming (C4, sequence diagrams) and ADR consolidation.
-- Packaging demos and reproducible steps for reviewers.
+- Case study structure: Context → Problem → Solution → Impact → Lessons.
+- Diagram polish and storytelling: C4 diagrams, sequence diagrams, and metrics.
+- Packaging demos and reproducible environments.
 
 ## 🛠 Hands-on Tasks (copyable steps)
 
-1. Select 2–3 projects to document
+1. Select case studies
 
-- Examples: AKS reference architecture, hybrid microservices checkout flow, multi-region failover.
+- Choose 2–3 projects (e.g., AKS reference, hybrid checkout, multi-region failover).
 
-2. For each project, produce artifacts
+2. Produce artifacts
 
-- C4 diagrams, sequence diagrams, ADRs, deployment manifests, and a short demo script.
+- Create clean diagrams, ADRs, deployment manifests, and a demo script for each case study.
 
-3. Write the case study
+3. Build portfolio README or GitHub Pages
 
-- Use a template: Context → Challenge → Solution → Impact → Lessons Learned.
+- Summarize each case study with links to diagrams, code, and a short video demo if possible.
 
-4. Create a portfolio site or README
+4. Integrate into resume
 
-- Collate case studies into `portfolio/` or publish via GitHub Pages.
+- Add a one-line summary and link to each case study in your resume or LinkedIn.
 
 ## 🏗 Deliverables
 
-- 2–3 detailed case studies in `projects/` with diagrams and ADRs.
-- Portfolio README with links to demos, diagrams, and code.
-- Demo scripts and sample data to run demos locally or in a sandbox environment.
+- 2–3 complete case studies with diagrams and ADRs in `projects/`.
+- Portfolio README or site to showcase projects.
+- Demo scripts and sample data for reviewers to run.
 
 ## 🔍 Architecture Diagrams (placeholder)
 
-- `cloud-architect-roadmap/diagrams/portfolio-casestudies.png` — visual summary of selected case studies.
+- `cloud-architect-roadmap/diagrams/portfolio-casestudies.png` — visual summary for portfolio landing page.
 
 ## 📓 Notes & Reflection (TMS perspective)
 
-Artifacts are proof of practice. Week 11 is where I focus on telling the story: why we made decisions, what we measured, and what changed as a result. Concise metrics (latency improvement, cost savings) make case studies persuasive.
+Week 11 is about turning hard work into evidence. I focus on succinct storytelling: what problem I solved, what constraints existed, what I chose, and what measurable improvement resulted.
 
 — TMS

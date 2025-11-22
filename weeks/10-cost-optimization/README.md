@@ -1,54 +1,51 @@
-# Week 10: Cost Optimization
+# Week 10: Cost Optimization (FinOps)
 
 ## 🎯 Objectives
 
-- Apply FinOps practices to measure, control, and optimize costs across Azure services used by the platform.
-- Identify cost drivers and implement automation and governance to manage spend.
+- Implement processes to measure, manage, and optimize cloud spend across environments using FinOps principles.
+- Instrument and automate cost-saving measures.
 
 ## 📚 Learning Topics
 
-- Azure Cost Management, budgets, and alerts.
-- Rightsizing: AKS node pools, reserved instances, spot instances, and autoscaling.
-- Serverless cost implications: Function consumption vs premium plans.
-- Data cost optimization: CosmosDB RU tuning, TTLs, and caching strategies.
+- Spot instances, reserved instances, and savings plans.
+- Cost allocation: tagging, chargeback/showback, and mapping costs to teams/projects.
+- Autoscaling strategies and scheduled scaling for non-prod environments.
+- Measuring cost per environment and per service.
 
 ## 🛠 Hands-on Tasks (copyable steps)
 
-1. Create a cost baseline and budget
+1. Create cost baseline
 
-    ```bash
-    # create a budget via az cli example
-    az consumption budget create --amount 1000 --category Cost --time-grain Monthly --name "dev-budget" --scope /subscriptions/<SUB>
-    ```
+- Use Azure Cost Management to generate a baseline report and identify top spenders.
 
-2. Analyze AKS cost drivers
+2. Implement tagging & Azure Policy
 
-    - Use Cost Management to identify top spenders and evaluate node pool sizing and use of spot instances.
+- Enforce tags via Azure Policy and add CI checks for missing tags in IaC.
 
-3. Tune CosmosDB costs
+3. Schedule non-prod shutdowns
 
-    - Review RU consumption, consider autoscale, and implement TTLs for ephemeral data.
+- Create automation (Azure Automation or GitHub Actions) to stop non-prod clusters during off-hours.
 
-4. Implement tagging and policies
+4. Analyze workload suitability for spot VMs
 
-    - Create Azure Policy to enforce tagging and add CI checks to block untagged deployments.
+- Move batch and non-critical workloads to spot node pools and validate preemption handling.
 
-5. Automate cost savings
+5. Build cost dashboards
 
-    - Create scripts or pipelines to shut down non-prod resources on a schedule and to scale down dev environments during off-hours.
+- Create dashboards showing daily/weekly/monthly spend, and cost per service/namespace.
 
 ## 🏗 Deliverables
 
-- Cost baseline report and recommended actions.
-- Automated scripts/workflows for resource scheduling and tagging enforcement.
-- A set of cost guardrails implemented via Azure Policy and CI checks.
+- Cost baseline report and recommendations.
+- Automated scheduling scripts and policy enforcement for tagging.
+- Dashboards for cost per environment and alerts for anomalies.
 
 ## 🔍 Architecture Diagrams (placeholder)
 
-- `cloud-architect-roadmap/diagrams/cost-optimization.png` — mapping of cost drivers across services and recommended savings actions.
+- `cloud-architect-roadmap/diagrams/cost-optimization.png` — cost map highlighting compute, data, networking spend.
 
 ## 📓 Notes & Reflection (TMS perspective)
 
-FinOps is continuous; the biggest gains come from measurement and automation. Week 10 is about building habits: tagging, scheduled automation, and regularly reviewing spend with stakeholders.
+Cost optimization is iterative: measure → act → measure again. Week 10 focused on low-effort automation (scheduling, tags) that yields immediate wins while planning for structural changes (reserved instances) in the medium term.
 
 — TMS

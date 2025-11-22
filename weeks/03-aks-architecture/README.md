@@ -1,74 +1,107 @@
-# Week 03: AKS Architecture
+# Week 03: AKS Architecture — Production Microservices Platform
 
 ## 🎯 Objectives
 
-- Design and operate production-grade AKS clusters optimized for security, scalability, and cost-efficiency.
-- Understand node pool strategies, networking integration, runtime security, and observability for Kubernetes workloads.
+- Design a production-grade AKS platform that supports microservices with security, scalability, and operational hygiene.
+- Make explicit choices around networking, node pool strategy, ingress, storage, and autoscaling.
+- Provide repeatable deployment and operational patterns.
 
 ## 📚 Learning Topics
 
-- AKS cluster models: single vs multiple clusters, AKS managed vs self-managed.
-- Node pools and Taints/Tolerations, spot instances, and node auto-scaling.
-- Networking choices: Azure CNI vs Kubenet, private clusters, AGIC vs NGINX ingress.
-- Pod security: RBAC, Pod Security Standards, network policies.
-- Storage and persistent volumes: Managed Disks, Azure Files, CSI drivers.
-- Observability stack: Prometheus, Grafana, Azure Monitor containers, and tracing.
+- Networking: Kubenet vs Azure CNI (trade-offs for IP management, routing, and Private Endpoints).
+- Node pools: system vs user vs spot pools; taints/tolerations and upgrade strategies.
+- Ingress options: NGINX, Application Gateway Ingress Controller (AGIC), Azure Front Door integration.
+- Storage: persistent volumes, CSI drivers, performance and backup considerations; Key Vault for secrets.
+- TLS & certificate management with cert-manager and issuing strategies.
+- Autoscaling: HPA for pods, Cluster Autoscaler for nodes, KEDA for event-driven scaling.
 
 ## 🛠 Hands-on Tasks (copyable steps)
 
-1. Bootstrap an AKS cluster with Terraform or az CLI
+1. Choose networking model and create sample cluster
+
+- Azure CNI (recommended) — run AKS with `--network-plugin azure` to get pod IPs in VNet.
 
     ```bash
-    # example using az cli (replace placeholders)
-    az group create -n rg-aks-demo -l eastus
-    az aks create -n aks-demo -g rg-aks-demo --node-count 2 --enable-addons monitoring --generate-ssh-keys --enable-managed-identity
+    az aks create -n aks-prod -g rg-aks -l eastus --network-plugin azure --vnet-subnet-id /subscriptions/.../subnets/aks-subnet --enable-managed-identity --enable-addons monitoring
     ```
 
-2. Add an additional node pool for workloads
+- Kubenet quick test (if IP conservation needed):
 
     ```bash
-    az aks nodepool add --resource-group rg-aks-demo --cluster-name aks-demo --name workers --node-count 2 --node-vm-size Standard_DS2_v2
+    az aks create -n aks-kubenet -g rg-aks -l eastus --network-plugin kubenet --enable-managed-identity
     ```
 
-3. Configure Azure AD integration and RBAC
+2. Create node pools
 
     ```bash
-    # example reference; follow AKS docs to configure AKS server Azure AD integration and RBAC
+    # system pool (default)
+    az aks nodepool add -g rg-aks --cluster-name aks-prod --name user --node-count 3 --node-vm-size Standard_DS2_v2
+    # spot pool for batch or non-critical
+    az aks nodepool add -g rg-aks --cluster-name aks-prod --name spot --enable-cluster-autoscaler --min-count 0 --max-count 5 --node-vm-size Standard_D2s_v3 --priority Spot
     ```
 
-4. Deploy an ingress controller (AGIC or NGINX)
+3. Ingress options
+
+- Deploy NGINX Ingress Controller for standard L7 routing:
 
     ```bash
-    # AGIC example with Helm
+    helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+    helm install ingress-nginx ingress-nginx/ingress-nginx --namespace ingress
+    ```
+
+- Deploy AGIC for Azure Application Gateway integration (WAF + TLS termination):
+
+    ```bash
     helm repo add application-gateway-kubernetes-ingress https://appgwingress.blob.core.windows.net/ingress-azure-helm-package/
-    helm install ingress-azure application-gateway-kubernetes-ingress/ingress-azure -n kube-system
+    helm install ingress-azure application-gateway-kubernetes-ingress/ingress-azure -n kube-system --set appgw.name=<appgw-name> --set appgw.resourceGroup=<rg>
     ```
 
-5. Enable network policies and Pod Security Standards
+4. Storage & Key Vault integration
 
-    - Enable Calico or Azure-native network policies and configure pod security admission (enforce restricted policies for critical namespaces).
+- Use CSI drivers for Azure Disk and Azure File for PVs; configure StorageClasses for performance tiers.
+- Mount secrets via External Secrets Operator or use Key Vault FlexVolume / CSI Secrets Store to inject secrets into pods.
 
-6. CI/CD for Kubernetes
+5. TLS + cert-manager
 
-    - Create a simple GitHub Actions pipeline that builds container images and pushes to ACR, then ArgoCD or kubectl deploys to AKS.
+    ```bash
+    helm repo add jetstack https://charts.jetstack.io
+    helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --set installCRDs=true
+    ```
+- Configure Issuer (ACME) or an internal CA and annotate Ingress resources to auto-issue certificates.
 
-7. Backup & DR for AKS
+6. Autoscaling
 
-    - Install Velero and perform snapshot/restore tests for critical workloads and PVs.
+- HPA example (CPU based):
+
+    ```bash
+    kubectl autoscale deployment my-app --cpu-percent=70 --min=2 --max=10
+    ```
+
+- Cluster Autoscaler: enable on the cluster or per node pool via `--enable-cluster-autoscaler` and `--min-count/--max-count`.
+- KEDA: install KEDA to scale based on Service Bus queue length or custom metrics.
+
+    ```bash
+    helm repo add kedacore https://kedacore.github.io/charts
+    helm install keda kedacore/keda --namespace keda --create-namespace
+    ```
+
+7. Backup & restore
+
+- Install Velero for periodic backups and test restore workflows for namespaces and PVCs.
 
 ## 🏗 Deliverables
 
-- AKS Terraform module scaffold in `projects/aks-reference-architecture` or `infrastructure/modules/aks`.
-- Sample Helm chart and ArgoCD app manifest for one microservice.
-- Runbook for cluster upgrades, node pool maintenance, and incident response.
-- Backup/restore playbook using Velero.
+- AKS Terraform module scaffold with parameters for network plugin, node pool definitions, and autoscaler settings.
+- Example Helm charts for ingress and a sample microservice including HPA and resource requests/limits.
+- cert-manager Issuer/ClusterIssuer examples and guidance for certificate renewal.
+- Backup playbook using Velero and restore verification steps.
 
 ## 🔍 Architecture Diagrams (placeholder)
 
-- `cloud-architect-roadmap/diagrams/aks-cluster-architecture.png` — AKS cluster with multiple node pools, AGIC, private cluster API, Private Link to CosmosDB/Redis.
+- `cloud-architect-roadmap/diagrams/aks-cluster-architecture.png` — show node pools, ingress options (NGINX/AGIC), storage, Key Vault integration, and monitoring.
 
 ## 📓 Notes & Reflection (TMS perspective)
 
-AKS provides powerful primitives but operational complexity can grow quickly. Week 03 was about balancing control and manageability: use managed capabilities where possible but enforce security and observability. Start small, automate upgrades and backups, and practice restores.
+AKS gives flexibility but requires discipline: define node pools early, set sensible resource requests/limits, and automate certificate management and backups. I usually start with Azure CNI for simplicity integrating with Private Endpoints, then add spot pools as I have workload classification data. Instrumentation and autoscaling are non-negotiable for production reliability.
 
 — TMS

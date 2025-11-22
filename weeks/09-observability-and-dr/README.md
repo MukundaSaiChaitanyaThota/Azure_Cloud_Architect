@@ -4,57 +4,50 @@
 
 ## 🎯 Objectives
 
-- Build a comprehensive observability strategy and a tested disaster recovery plan for hybrid services.
-- Ensure telemetry, alerting, and runbooks are in place to detect and recover from incidents.
+- Build a unified observability strategy (metrics, logs, traces) and a documented DR plan with measurable RTO/RPO.
+- Implement necessary tooling to run chaos experiments and validate resilience.
 
 ## 📚 Learning Topics
 
-- Instrumentation: metrics, logs, traces (OpenTelemetry, Application Insights, Prometheus).
-- Centralized logging and queries with Log Analytics.
-- Alerting and incident management: action groups, runbooks, automated remediation.
-- Backup strategies: Velero for Kubernetes, continuous backup for CosmosDB, and Storage replication.
-- DR testing and drills.
+- Monitoring stack: Prometheus, Grafana, Application Insights, Loki for logs.
+- Distributed tracing with OpenTelemetry and correlating logs/traces/metrics.
+- Chaos engineering basics and fault injection tools.
+- Backup and restore for AKS (Velero) and data stores (CosmosDB PITR / continuous backup).
 
 ## 🛠 Hands-on Tasks (copyable steps)
 
-1. Instrument a sample service with OpenTelemetry
+1. Instrument a service with OTEL
 
-- Add OpenTelemetry SDK to a sample microservice and export to Application Insights or a collector.
+- Add OpenTelemetry SDK to app and configure exporter to Application Insights and a collector that forwards to Prometheus.
 
-2. Configure Log Analytics and dashboards
+2. Centralized logging
 
-```bash
-az monitor log-analytics workspace create -g rg-monitor -n la-obs
-```
+- Deploy Loki (or use Azure Monitor) and configure Fluent Bit to forward logs from cluster.
 
-- Create sample queries and dashboards for service latency and error rates.
+3. Prometheus & Grafana
 
-3. Alerts and runbooks
+- Deploy Prometheus Operator and Grafana, create dashboards for cluster and application metrics.
 
-- Create alert rules (e.g., frontend 5xx rate > 1%) and attach action groups that trigger runbooks (automation runbooks or Logic Apps).
+4. Chaos testing
 
-4. Backups & DR
+- Use tools like Litmus or Chaos Mesh to inject failures (pod kill, network delay) and validate runbooks.
 
-- Configure Velero for AKS and test restore of a namespace and persistent volumes.
-- Enable continuous backup/PITR for CosmosDB and test container-level restore.
+5. DR playbook
 
-5. DR drills
-
-- Schedule and run a DR drill: simulate region outage, validate failover to secondary region, and measure RTO/RPO.
+- Document backup schedule and perform a restore test for a namespace and a CosmosDB container.
 
 ## 🏗 Deliverables
 
-- Observability playbook and example dashboards.
-- Alerting rules and runbooks for common incidents.
-- Backup/restore playbook and DR drill report.
-- Sample traces showing end-to-end flows across AKS and Functions.
+- OTEL instrumentation examples and collector config.
+- Dashboards and alerting rules (example in Grafana/Prometheus and Application Insights).
+- Chaos test results and DR drill report.
 
 ## 🔍 Architecture Diagrams (placeholder)
 
-- `cloud-architect-roadmap/diagrams/observability-flow.png` — Telemetry pipelines from AKS/Functions -> Log Analytics -> Dashboards/Alerts.
+- `cloud-architect-roadmap/diagrams/observability-flow.png` — telemetry flow from apps to collectors and storage, and the DR backup topology.
 
 ## 📓 Notes & Reflection (TMS perspective)
 
-Observability is the muscle that lets you operate at scale. Week 09 is focused on making systems self-diagnosing and validating recovery procedures. Run real drills — they surface configuration and documentation gaps.
+Instrumentation is the cost of being able to operate. Week 09 felt like turning on headlights: you can only fix what you can see. Regular DR drills and chaos testing build confidence that runbooks work under pressure.
 
 — TMS

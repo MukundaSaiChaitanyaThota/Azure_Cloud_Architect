@@ -2,46 +2,45 @@
 
 ## 🎯 Objectives
 
-- Develop communication and problem-solving skills required for cloud architecture roles and stakeholder leadership.
-- Prepare for system design interviews and articulate trade-offs clearly.
+- Practice system design and behavioral interview skills; codify trade-off thinking and communication patterns.
+- Consolidate learning into a repeatable interview prep routine.
 
 ## 📚 Learning Topics
 
-- Storytelling in architecture: presenting context, constraints, decisions, and outcomes.
-- System design interview patterns: capacity planning, failure modes, consistency/availability trade-offs.
-- Behavioral interview prep (STAR method) and whiteboard techniques.
-- Continuous learning plan and next steps beyond the 3-month roadmap.
+- Azure Well-Architected Framework and its pillars.
+- System design interview patterns: capacity planning, data partitioning, consistency models, caching.
+- Mock interviews, whiteboarding, and the STAR method for behavioral questions.
+- Documenting trade-offs and improving articulation skills.
 
 ## 🛠 Hands-on Tasks (copyable steps)
 
-1. Practice system design prompts
+1. Study Well-Architected Framework
 
-- Use a template to sketch solutions: requirements, scale, components, data flow, and trade-offs.
+- Read and summarize the five pillars and map them to your projects.
 
-2. Prepare STAR stories for key experiences
+2. System design drills
 
-- Write 6–8 stories that demonstrate leadership, conflict resolution, trade-off decisions, and impact.
+- Practice 2–3 timed system design prompts per day and record solutions.
 
-3. Whiteboard practice and mock interviews
+3. Behavioral stories (STAR)
 
-- Pair with a peer or use online platforms to simulate architecture interviews.
+- Prepare 6–8 STAR stories and refine them with peer feedback.
 
-4. Consolidate portfolio and talking points
+4. Mock interviews
 
-- Prepare a 10–15 minute demo for each case study focusing on decisions and outcomes.
+- Schedule mock interviews with peers or use online platforms for feedback and recording.
 
 ## 🏗 Deliverables
 
-- Interview notes, system design templates, and STAR stories saved in `docs/notes/`.
-- A 10–15 minute demo script per case study.
-- A continuous learning plan for the next 6 months.
+- Interview notes, system design templates, and recorded mock interview sessions.
+- A personal cheatsheet mapping common patterns to Azure services.
 
 ## 🔍 Architecture Diagrams (placeholder)
 
-- `cloud-architect-roadmap/diagrams/interview-cheatsheet.png` — patterns and templates for system design interviews.
+- `cloud-architect-roadmap/diagrams/interview-cheatsheet.png` — quick patterns and diagrams to reference during interviews.
 
 ## 📓 Notes & Reflection (TMS perspective)
 
-Week 12 is about clarity and communication. For TMS, being able to explain trade-offs succinctly and show measurable outcomes is key. Practice, feedback, and iterating on your explanations refine both thinking and presentation skills.
+Week 12 is where you learn to tell your story. For me, clarity and brevity are valuable: present assumptions, list trade-offs, and propose a pragmatic design. Practice is the only way to make trade-off narration smooth under time pressure.
 
 — TMS
