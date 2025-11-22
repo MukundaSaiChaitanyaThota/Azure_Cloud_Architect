@@ -1,81 +1,151 @@
 # 02-azure-networking
 
-# Week 02: Azure Networking
+# Week 02: Azure Networking & Hub‑and‑Spoke Architecture
 
 ## 🎯 Objectives
 
-- Master Azure networking building blocks and design secure, scalable topologies for hybrid microservices + serverless.
-- Implement Private Link, Hub-and-Spoke, and secure ingress patterns.
-- Define network observability and networking policies for production readiness.
+- Design and implement a secure, scalable hub‑and‑spoke network topology for hybrid microservices + serverless workloads on Azure.
+- Learn to use Private Endpoints, VNet peering, Azure Firewall, and Application Gateway to protect and route traffic.
+- Bootstrap a Terraform-managed hub‑and‑spoke network and validate private AKS networking with an App Gateway ingress path.
 
 ## 📚 Learning Topics
 
-- VNets, subnets, NSGs, route tables, and Azure CNI vs kubenet for AKS.
-- Hub-and-Spoke topology, Azure Firewall, Bastion, and DNS design.
-- Private Link & Private Endpoints for PaaS services (CosmosDB, Key Vault, Redis).
-- Ingress strategies: Azure Front Door, Application Gateway (WAF), and AGIC.
-- Connectivity to on-prem: VPN Gateway vs ExpressRoute and forced tunneling concepts.
-- Network observability: Network Watcher, NSG flow logs, and Firewall diagnostics.
+- VNets & Subnets: address planning, subnet sizing, and IP management for node pools and pods.
+- Routing & NAT: Route Tables (UDRs), forced tunneling patterns, and NAT Gateway for predictable egress.
+- Private Endpoints & Private Link: securing PaaS access (CosmosDB, Key Vault, Redis) over the VNet.
+- ExpressRoute & VPN Gateway: differences, use-cases, and hybrid connectivity patterns.
+- DNS: Private DNS zones, conditional forwarding, and name resolution across peered VNets.
+- VNet Peering vs Hub‑and‑Spoke: when to peer, transitive routing limitations, and gateway transit.
+- Firewall & WAF: Azure Firewall for centralized policy; WAF (on Application Gateway/Front Door) for L7 protection.
+- Network observability: Network Watcher, NSG flow logs, Firewall logs and integration with Log Analytics.
 
 ## 🛠 Hands-on Tasks (copyable steps)
 
-1. Create a Hub-and-Spoke design document
+> The steps below are example commands and Terraform guidance — adapt names, regions, and resource IDs for your subscription.
 
-- Draw a diagram that includes: hub VNet with Firewall, Bastion, DNS; spoke VNets for AKS, apps, and data; private endpoints to key PaaS services.
+1) Plan IP addressing and subnets
 
-2. Create VNets and subnets (example)
+- Choose address spaces that avoid overlap with on‑premises ranges. Example:
+  - Hub VNet: 10.0.0.0/16
+  - Spoke-app: 10.1.0.0/16 (AKS)
+  - Spoke-data: 10.2.0.0/16 (datastores)
+  - Spoke-platform: 10.3.0.0/16 (App Gateway, NAT)
 
-```bash
-az group create -n rg-network-demo -l eastus
-az network vnet create -g rg-network-demo -n hub-vnet --address-prefix 10.0.0.0/16
-az network vnet create -g rg-network-demo -n spoke-app --address-prefix 10.1.0.0/16
+2) Terraform scaffold for hub-and-spoke (quick start)
+
+- Create `infrastructure/networking/hub` and `infrastructure/networking/spoke` modules. Minimal example backend init:
+
+```hcl
+# infrastructure/networking/main.tf (example)
+module "hub" {
+  source = "./modules/hub"
+  vnet_address_space = ["10.0.0.0/16"]
+  location = var.location
+}
+
+module "spoke_app" {
+  source = "./modules/spoke"
+  parent_vnet_id = module.hub.vnet_id
+  vnet_address_space = ["10.1.0.0/16"]
+}
 ```
 
-3. Deploy Private Endpoints for CosmosDB & Redis
+- Initialize & plan
 
 ```bash
-# replace placeholders accordingly
-az network private-endpoint create --name pe-cosmos --resource-group rg-network-demo --vnet-name spoke-app --subnet subnet-data --private-connection-resource-id <COSMOS_RESOURCE_ID> --group-ids Sql
+cd infrastructure/networking
+terraform init
+terraform plan -out tfplan
+terraform apply tfplan
 ```
 
-4. Deploy Azure Firewall in the hub and configure Route Table
+3) Deploy Azure Firewall in hub and configure UDRs
 
 ```bash
-az network firewall create -n tms-firewall -g rg-network-demo --location eastus
-# create route table and UDRs to force egress through the firewall
+az network firewall create -g rg-network -n tms-firewall -l eastus
+# Create route table, add default route for 0.0.0.0/0 to firewall private IP, associate with spoke subnet(s)
 ```
 
-5. Configure secure ingress with Front Door + App Gateway
-
-- Deploy Front Door frontend and add regional Application Gateway backends with health probes.
-- Use WAF policies on Application Gateway for regional protection.
-
-6. Enable Network Watcher and NSG flow logs
+4) Create Private Endpoints for PaaS
 
 ```bash
-az network watcher configure -g rg-network-demo -l eastus --enabled true
-az monitor log-analytics workspace create -g rg-network-demo -n la-network
-# enable NSG flow logs to Log Analytics
+# CosmosDB example
+az network private-endpoint create --name pe-cosmos --resource-group rg-network --vnet-name spoke-data --subnet data-subnet --private-connection-resource-id /subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.DocumentDB/databaseAccounts/<cosmos> --group-ids Sql
 ```
 
-7. Validate connectivity and private access
+- Register private DNS zone and link to VNets:
 
-- From an AKS pod, verify you can reach CosmosDB via private endpoint and that public endpoint access is blocked.
+```bash
+az network private-dns zone create -g rg-network -n "privatelink.documents.azure.com"
+az network private-dns link vnet create -g rg-network -n link-hub --zone-name "privatelink.documents.azure.com" --virtual-network hub-vnet --registration-enabled false
+```
+
+5) App Gateway + AGIC for private ingress to AKS
+
+- Deploy Application Gateway into the hub/spoke-platform subnet with WAF enabled and ensure backend pools point to AGIC-managed endpoints.
+
+```bash
+# Install AGIC in AKS
+helm repo add application-gateway-kubernetes-ingress https://appgwingress.blob.core.windows.net/ingress-azure-helm-package/
+helm install ingress-azure application-gateway-kubernetes-ingress/ingress-azure -n kube-system --set appgw.name=<AGW_NAME> --set appgw.resourceGroup=<AGW_RG>
+```
+
+- Create Ingress manifest in your app with the class `azure/application-gateway` and test TLS termination via App Gateway.
+
+6) Private AKS cluster networking validation
+
+- Create a private AKS cluster (API server private) and ensure pods can reach PaaS via Private Endpoints.
+
+```bash
+az aks create -n aks-private -g rg-aks --enable-private-cluster --network-plugin azure --vnet-subnet-id /subscriptions/.../subnets/aks-subnet --enable-managed-identity --enable-addons monitoring
+```
+
+- Test from a pod
+
+```bash
+kubectl run -it --rm --image=alpine --overrides='{ "apiVersion": "v1", "kind": "Pod", "spec": { "containers": [{ "name": "curl", "image": "curlimages/curl", "command": ["sleep","3600"] }], "restartPolicy": "Never" }}' curl-test
+kubectl exec -it pod/curl-test -- nslookup <cosmos-account>.privatelink.documents.azure.com
+kubectl exec -it pod/curl-test -- curl -v https://<cosmos-private-ip>
+```
+
+7) Hybrid connectivity: verify ExpressRoute or VPN
+
+- For ExpressRoute, coordinate with networking team to provision circuits and create private peering to your hub.
+- For VPN Gateway quick test:
+
+```bash
+az network vnet-gateway create -g rg-network -n vpngw --public-ip-addresses <ip> --vnet hub-vnet --gateway-type Vpn --vpn-type RouteBased
+```
+
+8) Observability: enable Network Watcher & NSG flow logs
+
+```bash
+az network watcher configure -g rg-network -l eastus --enabled true
+az network watcher flow-log configure -g rg-network --nsg /subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/networkSecurityGroups/<nsg> --enabled true --retention 30 --workspace /subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.OperationalInsights/workspaces/<workspace>
+```
 
 ## 🏗 Deliverables
 
-- Hub-and-Spoke network diagram saved to `cloud-architect-roadmap/diagrams/hub-spoke-network.png`.
-- Terraform sample module for hub-and-spoke networking (scaffold) in `projects/terraform-modules` or `infrastructure/modules`.
-- Private Endpoint implementation notes and verification steps documented in `docs/notes/azure-networking-notes.md`.
-- Network observability queries and example dashboards for NSG/Firewall logs.
+- Terraform modules for `hub` and `spoke` networks with examples in `infrastructure/networking`.
+- App Gateway + AGIC deployment manifest and sample Ingress in `projects/aks-reference-architecture`.
+- Private AKS provisioning script or Terraform module with validation steps.
+- Private DNS zone configuration and documentation for name resolution.
+- Network observability queries (Log Analytics) and a sample dashboard for NSG/Firewall logs.
 
-## 🔍 Architecture Diagrams (placeholder)
+## 🔍 Diagrams (placeholders)
 
-- `cloud-architect-roadmap/diagrams/hub-spoke-network.png` — Hub (Firewall, Bastion) -> Spokes (AKS, App, Data) with Private Endpoints to CosmosDB/Redis.
-- `cloud-architect-roadmap/diagrams/frontdoor-appgw-architecture.png` — Front Door -> App Gateway -> AKS/Functions per region.
+- `cloud-architect-roadmap/diagrams/hub-spoke-network.png` — Hub VNet with Firewall, Bastion, shared services; spokes for AKS, apps, and data with Private Endpoints.
+- `cloud-architect-roadmap/diagrams/private-ingress-routing.png` — Flow: Front Door (optional) -> Frontend App Gateway (WAF) -> Backend App Gateway (regional) -> AGIC -> AKS pod; show UDRs & Firewall egress path.
 
-## 📓 Notes & Reflection (TMS perspective)
+(Export PNG/SVG into `cloud-architect-roadmap/diagrams/`.)
 
-Networking is the backbone of secure, reliable architectures. For me (TMS), Week 02 reinforced that getting private connectivity and clear segmentation right early saves countless incidents later. I prefer codifying network patterns in Terraform modules so the hub-and-spoke can be reproduced consistently. Observability for networking is often overlooked — enable NSG flow logs and Firewall diagnostics from day one.
+## 📓 Personal Reflection (TMS perspective)
+
+Networking is the unsung hero of platform reliability. Week 02 forced me to think about address space and routability before any services were deployed. The hub‑and‑spoke model centralizes control and simplifies security posture, but it also introduces a dependency on the hub components — make sure automation is robust. Private endpoints dramatically reduce public exposure of PaaS services, but DNS and cross‑VNet resolution add complexity that should be scripted and tested.
+
+Practical tips I used:
+- Automate DNS zone creation and linking — manual steps are fragile.
+- Start with a conservative subnet sizing strategy with documented growth plans.
+- Test connectivity from a pod early — it surfaces DNS/NSG issues fast.
 
 — TMS
