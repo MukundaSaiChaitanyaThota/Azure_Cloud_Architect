@@ -97,6 +97,47 @@ Each project will live under [`/projects`](./projects) with its own `README.md` 
 
 ---
 
+## 🖼 Diagram Placeholders
+
+![AKS Reference Architecture](./diagrams/aks-reference-architecture.png)
+
+![Hub-Spoke VNet](./diagrams/hub-spoke-vnet.png)
+
+![Hybrid Microservices + Serverless](./diagrams/hybrid-microservices-serverless.png)
+
+![Multi-Region Failover](./diagrams/multi-region-failover.png)
+
+![Observability and DR](./diagrams/observability-and-dr.png)
+
+---
+
+## 🧠 Principles & Frameworks
+
+- Azure Well-Architected Framework
+- Cloud Adoption Framework (CAF)
+- Disaster Recovery Patterns (RTO/RPO)
+- Zero-Trust & Security Baseline
+
+---
+
+## ✍ Why This Repo Exists
+
+I already have hands-on DevOps experience:
+
+- Azure DevOps pipelines
+- AKS deployments
+- ArgoCD & Argo Workflows
+- Terraform (Azure + AWS)
+
+This repo is my transition from **execution** → **architecture & design**.
+
+---
+
+## 👤 Author
+
+**TMS**  
+Cloud & DevOps Engineer → Future Azure Cloud Architect
+
 ## 📂 Repo Structure
 
 > Planned repo layout (will evolve as I progress):
@@ -165,3 +206,6 @@ cloud-architect-roadmap/
         ├── system-design-notes.md
         ├── azure-networking-notes.md
         └── aks-architecture-notes.md
+
+---
+
