@@ -1,94 +1,136 @@
-# Project: Production-Grade AKS Platform (Microservices)
+# AKS Reference Architecture — Production-Grade Microservices Platform
 
 ## Overview
 
-A reference implementation and guidance for running production-grade microservices on Azure Kubernetes Service (AKS). This project documents recommended topology, CI/CD practices, operational controls, and trade-offs for a hybrid microservices + serverless platform. The goal is to provide a repeatable, secure, and observable foundation that teams can adopt and extend.
+This project contains a reference architecture, best-practices, and example artifacts for running production-grade microservices on Azure Kubernetes Service (AKS). It is intended as a starting point for platform teams to adopt a secure, observable, and cost-effective cluster topology and deployment workflow.
 
-## Architecture Diagram (placeholder)
-
-- `cloud-architect-roadmap/diagrams/aks-reference-architecture.png` — Front Door -> Application Gateway -> AKS (multiple node pools) -> Private Link to CosmosDB and Redis. Include monitoring, logging and CI/CD flow in the diagram.
-
-
-## Tech Stack
-
-- AKS (managed Kubernetes)
-- Azure Front Door (global routing, WAF)
-- Azure Application Gateway (regional ingress, AGIC)
-- Azure Container Registry (ACR)
-- Azure Cosmos DB (multi-region, Core SQL API)
-- Azure Cache for Redis (hot data cache)
-- Azure Monitor / Log Analytics / Application Insights
-- ArgoCD (GitOps) and Helm charts
-- Terraform for infrastructure provisioning
-- KEDA for event-driven autoscaling (optional)
-- Velero for backups and restores of cluster resources
-
-## Deployment Workflow
-
-1. Code & Build
-- Developers push app changes to `apps/<service>` repository or monorepo.
-- GitHub Actions build container images, run tests, push images to ACR with immutable tags.
-
-2. Image Promotion
-- Use image promotion or immutability pattern: tags include commit SHA and a promoted `stable` tag for release.
-
-3. GitOps
-- Application manifests/Helm charts live in `infrastructure/apps` or a GitOps repo.
-- ArgoCD monitors the Git repo and reconciles desired state into target clusters.
-
-4. Progressive Delivery
-- Use Argo Rollouts for canary or blue/green deployments with automated promotion rules based on SLOs (error rate, latency).
-
-5. Secrets
-- Use External Secrets Operator to sync secrets from Azure Key Vault or Sealed Secrets when appropriate. Never store raw secrets in Git.
-
-6. Observability
-- Ensure every service emits OpenTelemetry traces and metrics; wire to Application Insights and Prometheus/Grafana dashboards.
-
-## Security Considerations
-
-- Network
-  - Use Hub-and-Spoke network topology; place AKS in a spoke with private cluster mode enabled (API server private endpoint).
-  - Use Private Endpoints for CosmosDB, Redis and Key Vault; disable public network access where possible.
-  - Enforce NSGs and Azure Firewall rules in the hub.
-
-- Identity & Access
-  - Use Managed Identities (system or user-assigned) for cluster components and workloads instead of long-lived service principals.
-  - Enforce Azure AD integration for Kubernetes API server and RBAC for namespace-level access control.
-
-- Runtime
-  - Apply Pod Security Standards (restricted for production namespaces) and network policies (Calico/Azure CNI) to restrict pod-to-pod traffic.
-  - Scan container images on push and integrate vulnerability alerts via Microsoft Defender for Container Registries.
-
-- Supply Chain
-  - Sign images where possible and enforce admission policies to only allow images from trusted registries/tags.
-
-## Cost Optimization
-
-- Node Pools & Autoscaling
-  - Use multiple node pools: system, workloads, and spot (preemptible) node pools for non-critical batch jobs to save cost.
-  - Configure Cluster Autoscaler aggressively on non-prod and conservatively on prod depending on required headroom.
-
-- Right-sizing
-  - Continuously analyze pod and node utilization; tune requests/limits and choose appropriate VM SKUs.
-
-- Caching & Data
-  - Use Azure Cache for Redis for hot data to reduce RU charges on CosmosDB.
-  - Use CosmosDB autoscale for unpredictable workloads, and provisioned throughput for stable workloads to optimize costs.
-
-- Environments
-  - Schedule non-prod clusters to scale down or shut down during off-hours and use sandbox copies with reduced capacity for development.
-
-## Future Enhancements
-
-- Multi-cluster topology with a dedicated management cluster for platform components (ArgoCD, logging, monitoring) and tenant-specific clusters for workloads.
-- Service mesh adoption (e.g., Linkerd for lighter footprint or Istio for richer features) for advanced traffic shaping, mTLS, and telemetry.
-- Implement full supply-chain security (Sigstore, image provenance) and OPA/Gatekeeper policies for policy-as-code enforcement.
-- Automated cost optimization recommendations and rightsizing via scheduled reports and CI checks.
-
+Key goals:
+- Reliable deployments with GitOps and progressive delivery
+- Strong security posture with private networking and managed identities
+- Observability across services and platform components
+- Cost control and autoscaling primitives
 
 ---
 
-Notes (TMS perspective):
+## Architecture Diagram (placeholder)
 
-This reference balances operational simplicity and real-world production needs. My approach is pragmatic: automate what causes pain (deployments, rollbacks, backups), instrument everything, and keep security and cost considerations in your CI/CD pipeline. Start with a small, hardened cluster and iterate — add complexity like multi-cluster or service mesh only when you have measurable need.
+- `cloud-architect-roadmap/diagrams/aks-reference-architecture.png` — Front Door -> App Gateway (WAF) -> AKS (multiple node pools: system, user, spot) -> Private Endpoints to CosmosDB, Redis, Key Vault; ArgoCD and CI pipeline components shown.
+
+Include monitoring (Prometheus/Grafana, Application Insights), logging flow to Log Analytics, and backup/Velero components.
+
+---
+
+## Design Overview
+
+Components:
+- Edge: Azure Front Door for global routing and DDoS protection; regional Application Gateway for WAF and TLS termination.
+- Platform: AKS clusters (single or multi-cluster strategy), ArgoCD for GitOps, ACR for images, Terraform for infra.
+- Data plane: Cosmos DB (multi-region), Azure Cache for Redis, Blob Storage.
+- Observability: OpenTelemetry -> Application Insights / Prometheus -> Grafana; Log Analytics for centralized logs.
+
+### Deployment topology
+- Platform (management) cluster runs ArgoCD, observability stack, and platform operators.
+- Workload clusters host customer microservices; clusters can be per team or per environment depending on tenancy and isolation needs.
+
+---
+
+## Design Trade-offs
+
+1. Azure CNI vs Kubenet
+- Azure CNI (preferred): simplifies Private Endpoint connectivity and network policies but consumes IP space from VNet. Requires careful IP planning.
+- Kubenet: conserves IPs but complicates routing and integration with Azure platform services.
+
+2. Single cluster vs Multi-cluster
+- Single cluster: simpler to operate initially, cheaper, but risks noisy neighbor issues and blast radius.
+- Multi-cluster: stronger isolation and easier upgrades per-tenant but increases operational overhead.
+
+3. AGIC vs NGINX + Front Door
+- AGIC + App Gateway: tighter Azure integration, WAF capabilities, simpler TLS offload with native features.
+- NGINX Ingress + Front Door: more flexible and portable; requires managing WAF at Front Door or custom WAF rules.
+
+4. GitOps (ArgoCD) model
+- App of Apps and ApplicationSets provide scale; enforcement of declarative state reduces drift but requires strict repo discipline.
+
+---
+
+## Deployment Workflow
+
+1. Development
+- Developers push code to `apps/<service>`; CI builds images and runs unit/integration tests.
+
+2. Image registry and promotions
+- CI pushes images to ACR with immutable tags (commit SHA). Promotion tags (`canary`, `stable`) created by release workflows.
+
+3. GitOps
+- Application manifests/Helm charts live in a Git repo. ArgoCD (AppSet or App-of-Apps) monitors the repo and reconciles clusters.
+
+4. Progressive delivery
+- Use Argo Rollouts for canary deployments, automated promotion based on metrics and synthetic checks.
+
+5. Secrets
+- Use External Secrets Operator to sync secrets from Azure Key Vault into Kubernetes Secrets; avoid storing secrets in Git.
+
+6. Observability and verification
+- CI/CD pipelines run smoke tests and verify metrics/logs after deployment; ArgoCD health checks and alerts gate promotion.
+
+---
+
+## Security Considerations
+
+Network:
+- Hub-and-Spoke topology with AKS in spoke VNets. Private cluster API server and private endpoints for PaaS resources.
+- Azure Firewall in hub for centralized egress control; UDRs force egress through firewall when required.
+
+Identity:
+- Managed Identities (user-assigned) for cluster control plane and workload identities for pods (AAD Workload Identity) to access Azure resources.
+- Enable Azure AD integration for Kubernetes API server and enforce RBAC roles per namespace.
+
+Runtime:
+- Pod Security Standards (restricted) applied to production namespaces.
+- Network Policies (Calico or Azure native) to restrict pod-to-pod communication.
+- Image scanning on push to ACR and Defender for Containers enabled.
+
+Supply chain:
+- Use signed images when possible, admission controllers to enforce image provenance, and OPA/Gatekeeper policies for policy-as-code enforcement.
+
+---
+
+## Cost Optimization
+
+- Node pools: separate system, user, and spot/low-priority node pools. Use spot for non-critical batch workloads.
+- Autoscaling: Cluster Autoscaler and HPA to scale nodes and pods respectively. Use KEDA for event-driven scaling.
+- Rightsizing: monitor resource requests/limits and tune VM SKUs based on utilization trends.
+- Non-prod cost controls: schedule shutdown or reduced size for non-prod clusters and use sandbox tiers for dev.
+
+---
+
+## Scaling & Resilience
+
+- Use availability zones and multiple node pools to tolerate AZ failures.
+- Multi-region cluster strategy for global presence and disaster recovery; pair with Cosmos DB multi-region writes when needed.
+- Implement health probes at Front Door and Application Gateway; automate failover plans and runbooks.
+
+---
+
+## Example Terraform & Helm Structure (recommended)
+
+- `infrastructure/modules/aks` — module to create AKS cluster with configurable node pools, network plugin, and addons.
+- `infrastructure/environments/{dev,staging,prod}` — environment overlays referencing modules.
+- `charts/<service>` — Helm charts for each microservice.
+- `gitops/apps/{env}/{app}` — ArgoCD app manifests and values files.
+
+---
+
+## Future Enhancements
+
+- Adopt a lightweight service mesh (Linkerd) for observability and mTLS if team needs L7 controls.
+- Implement image signing and Sigstore integration for stronger supply-chain guarantees.
+- Add automated chaos experiments and continuous DR drills integrated into pipelines.
+
+---
+
+## Notes & TMS Reflection
+
+This reference balances Azure-native convenience with operational rigor. My pragmatic rule: automate repeatable tasks early (network, secrets, CI/CD), instrument everything, and postpone adding complexity (mesh, multi-cluster) until the metrics show a need.
+
+— TMS
